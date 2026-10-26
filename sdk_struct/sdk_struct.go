@@ -201,7 +201,12 @@ type AdvancedTextElem struct {
 type TypingElem struct {
 	MsgTips string `json:"msgTips,omitempty"`
 }
-
+type ReactionItem struct {
+	Status   int32    `json:"status,omitempty"` // 1 - bol active 0 bol ustgasan
+	Type     string   `json:"type,omitempty"`   //reaction type
+	User     CardElem `json:"user"`             //reaction user
+	SendTime int64    `json:"sendTime"`         //reaction create time
+}
 type MsgStruct struct {
 	ClientMsgID      string                 `json:"clientMsgID,omitempty"`
 	ServerMsgID      string                 `json:"serverMsgID,omitempty"`
@@ -229,6 +234,10 @@ type MsgStruct struct {
 	PictureElem      *PictureElem           `json:"pictureElem,omitempty"`
 	SoundElem        *SoundElem             `json:"soundElem,omitempty"`
 	VideoElem        *VideoElem             `json:"videoElem,omitempty"`
+	ParentMsgID      string                 `json:"parentMsgID"`
+	IsReact          bool                   `json:"isReact,omitempty"`
+	Reactions        []*ReactionItem        `json:"reactions,omitempty"`
+	ReactionElem     *ReactionElem          `json:"reactionElem,omitempty"`
 	FileElem         *FileElem              `json:"fileElem,omitempty"`
 	MergeElem        *MergeElem             `json:"mergeElem,omitempty"`
 	AtTextElem       *AtTextElem            `json:"atTextElem,omitempty"`
@@ -267,11 +276,10 @@ type UploadProgress struct {
 }
 
 type ReactionElem struct {
-	Counter          int32               `json:"counter,omitempty"`
-	Type             int                 `json:"type,omitempty"`
-	UserReactionList []*UserReactionElem `json:"userReactionList,omitempty"`
-	CanRepeat        bool                `json:"canRepeat,omitempty"`
-	Info             string              `json:"info,omitempty"`
+	Status      int32  `json:"status,omitempty"` // 1 - bol active 0 bol ustgasan
+	Type        string `json:"type,omitempty"`   //reaction type
+	ClientMsgID string `json:"clientMsgID,omitempty"`
+	Info        string `json:"info,omitempty"`
 }
 type UserReactionElem struct {
 	UserID  string `json:"userID,omitempty"`

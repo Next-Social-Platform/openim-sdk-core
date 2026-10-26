@@ -87,6 +87,7 @@ func (c *Conversation) getAdvancedHistoryMessageList(ctx context.Context, req sd
 	t = time.Now()
 
 	messageList = c.LocalChatLog2MsgStruct(list)
+	c.fillMessageReactions(ctx, conversationID, messageList)
 	log.ZDebug(ctx, "message convert and unmarshal", "unmarshal cost time", time.Since(t))
 	t = time.Now()
 	if !isReverse {
@@ -256,6 +257,58 @@ func (c *Conversation) LocalChatLog2MsgStruct(list []*model_struct.LocalChatLog)
 		messageList = append(messageList, temp)
 	}
 	return messageList
+}
+
+// fillMessageReactions attaches the latest reaction of each user to the messages they reacted to.
+func (c *Conversation) fillMessageReactions(ctx context.Context, conversationID string, messageList []*sdk_struct.MsgStruct) {
+	if len(messageList) == 0 {
+		return
+	}
+	msgIDs := make([]string, 0, len(messageList))
+	for _, msg := range messageList {
+		msgIDs = append(msgIDs, msg.ClientMsgID)
+	}
+	reactionMsgs, err := c.db.GetReactionMessagesByParentMsgIDs(ctx, conversationID, msgIDs)
+	if err != nil {
+		log.ZWarn(ctx, "GetReactionMessagesByParentMsgIDs err", err, "conversationID", conversationID)
+		return
+	}
+	if len(reactionMsgs) == 0 {
+		return
+	}
+	// reactionMsgs are ordered by send_time DESC, so the first one seen per user is the latest
+	reactions := make(map[string][]*sdk_struct.ReactionItem)
+	seen := make(map[string]map[string]struct{})
+	for _, v := range reactionMsgs {
+		if v.Status >= constant.MsgStatusHasDeleted {
+			continue
+		}
+		if seen[v.ParentMsgID] == nil {
+			seen[v.ParentMsgID] = make(map[string]struct{})
+		}
+		if _, ok := seen[v.ParentMsgID][v.SendID]; ok {
+			continue
+		}
+		seen[v.ParentMsgID][v.SendID] = struct{}{}
+		elem := sdk_struct.ReactionElem{}
+		if err := utils.JsonStringToStruct(v.Content, &elem); err != nil {
+			log.ZWarn(ctx, "reaction content unmarshal err", err, "clientMsgID", v.ClientMsgID)
+			continue
+		}
+		reactions[v.ParentMsgID] = append(reactions[v.ParentMsgID], &sdk_struct.ReactionItem{
+			Status:   elem.Status,
+			Type:     elem.Type,
+			SendTime: v.SendTime,
+			User: sdk_struct.CardElem{
+				UserID:   v.SendID,
+				Nickname: v.SenderNickname,
+				FaceURL:  v.SenderFaceURL,
+			},
+		})
+	}
+	for _, msg := range messageList {
+		msg.Reactions = reactions[msg.ClientMsgID]
+	}
 }
 
 func (c *Conversation) typingStatusUpdate(ctx context.Context, recvID, msgTip string) error {

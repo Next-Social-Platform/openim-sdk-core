@@ -248,6 +248,21 @@ func (c *Conversation) CreateImageMessageFromFullPath(ctx context.Context, image
 	}
 	return &s, nil
 }
+func (c *Conversation) CreateReactMessage(ctx context.Context, clientMsgID string, reaction string, status int32) (*sdk_struct.MsgStruct, error) {
+	log.ZDebug(ctx, "react msg")
+	s := sdk_struct.MsgStruct{}
+	err := c.initBasicInfo(ctx, &s, constant.UserMsgType, constant.ReactionMessageModifier)
+	if err != nil {
+		return nil, err
+	}
+	s.ReactionElem = &sdk_struct.ReactionElem{
+		Status:      status,
+		Type:        reaction,
+		ClientMsgID: clientMsgID,
+	}
+	s.ParentMsgID = clientMsgID
+	return &s, nil
+}
 func (c *Conversation) CreateSoundMessageFromFullPath(ctx context.Context, soundPath string, duration int64) (*sdk_struct.MsgStruct, error) {
 	dstFile := utils.FileTmpPath(soundPath, c.DataDir) //a->b
 	_, err := utils.CopyFile(soundPath, dstFile)

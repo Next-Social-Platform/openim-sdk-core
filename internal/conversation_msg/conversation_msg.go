@@ -281,7 +281,12 @@ func (c *Conversation) doMsgNew(c2v common.Cmd2Value) {
 			isSenderConversationUpdate = utils.GetSwitchFromOptions(v.Options, constant.IsSenderConversationUpdate)
 
 			msg := converter.MsgDataToMsgStruct(v)
-
+			if msg.ContentType == constant.ReactionMessageModifier {
+				t := sdk_struct.ReactionElem{}
+				utils.JsonStringToStruct(msg.Content, &t)
+				msg.ReactionElem = &t
+				msg.ParentMsgID = msg.ReactionElem.ClientMsgID
+			}
 			//When the message has been marked and deleted by the cloud, it is directly inserted locally without any conversation and message update.
 			if msg.Status == constant.MsgStatusHasDeleted {
 				dbMessage := converter.MsgStructToLocalChatLog(msg)

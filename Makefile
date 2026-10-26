@@ -197,7 +197,58 @@ ios:
 .PHONY: android
 android:
 	go get golang.org/x/mobile/bind
-	GOARCH=amd64 gomobile bind -v -trimpath -ldflags="-s -w" -o ./open_im_sdk.aar -target=android ./open_im_sdk/ ./open_im_sdk_callback/
+	ANDROID_HOME=$(ANDROID_HOME) ANDROID_NDK_HOME=$(ANDROID_NDK_HOME) GOARCH=amd64 gomobile bind -v -trimpath -ldflags="-s -w" -androidapi $(ANDROID_API) -o ./open_im_sdk.aar -target=android ./open_im_sdk/ ./open_im_sdk_callback/
+
+# ==============================================================================
+# Flutter SDK (open-im-sdk-flutter)
+
+FLUTTER_SDK_DIR ?= /Users/batxac/dev/nsp/open-im-sdk-flutter
+MOBILE_BUILD_DIR ?= build/mobile
+GOBIN_DIR := $(shell go env GOPATH)/bin
+GOMOBILE := $(GOBIN_DIR)/gomobile
+ANDROID_HOME ?= $(HOME)/Library/Android/sdk
+ANDROID_NDK_HOME ?= $(shell ls -d $(ANDROID_HOME)/ndk/* 2>/dev/null | sort -V | tail -1)
+ANDROID_API ?= 21
+FLUTTER_AAR_DIR := $(FLUTTER_SDK_DIR)/android/libs/io/openim/core-sdk/0.0.1
+FLUTTER_IOS_FRAMEWORK_DIR := $(FLUTTER_SDK_DIR)/ios/Framework
+# gomobile bind rewrites go.mod/go.sum (go version, deps); keep the originals
+# and gomobile needs golang.org/x/mobile in the module, so add it (matching the installed gomobile) only for the build
+GOMOBILE_VERSION = $(shell go version -m $(GOMOBILE) 2>/dev/null | awk '$$1=="mod"{print $$3}')
+GOMOBILE_KEEP_GOMOD = cp go.mod go.sum $(MOBILE_BUILD_DIR)/ && trap 'cp $(MOBILE_BUILD_DIR)/go.mod $(MOBILE_BUILD_DIR)/go.sum .' EXIT && \
+	go get golang.org/x/mobile/bind@$(GOMOBILE_VERSION) &&
+
+## gomobile-install: Install gomobile/gobind if missing
+.PHONY: gomobile-install
+gomobile-install:
+	@test -x $(GOMOBILE) || (go install golang.org/x/mobile/cmd/gomobile@latest && go install golang.org/x/mobile/cmd/gobind@latest && PATH=$(GOBIN_DIR):$$PATH $(GOMOBILE) init)
+
+## flutter-android: Build the Android AAR and copy it into the Flutter SDK
+.PHONY: flutter-android
+flutter-android: gomobile-install
+	@test -n "$(ANDROID_NDK_HOME)" || (echo "Android NDK not found under $(ANDROID_HOME)/ndk" && exit 1)
+	mkdir -p $(MOBILE_BUILD_DIR)/android
+	$(GOMOBILE_KEEP_GOMOD) PATH=$(GOBIN_DIR):$$PATH ANDROID_HOME=$(ANDROID_HOME) ANDROID_NDK_HOME=$(ANDROID_NDK_HOME) \
+		$(GOMOBILE) bind -v -trimpath -ldflags="-s -w" -androidapi $(ANDROID_API) -target=android \
+		-o $(MOBILE_BUILD_DIR)/android/open_im_sdk.aar ./open_im_sdk/ ./open_im_sdk_callback/
+	mkdir -p $(FLUTTER_AAR_DIR)
+	cp $(MOBILE_BUILD_DIR)/android/open_im_sdk.aar $(FLUTTER_AAR_DIR)/core-sdk-0.0.1.aar
+	@echo "===========> Copied AAR to $(FLUTTER_AAR_DIR)/core-sdk-0.0.1.aar"
+
+## flutter-ios: Build the iOS xcframework and copy it into the Flutter SDK
+.PHONY: flutter-ios
+flutter-ios: gomobile-install
+	rm -rf $(MOBILE_BUILD_DIR)/ios
+	mkdir -p $(MOBILE_BUILD_DIR)/ios
+	$(GOMOBILE_KEEP_GOMOD) PATH=$(GOBIN_DIR):$$PATH $(GOMOBILE) bind -v -trimpath -ldflags="-s -w" -target=ios \
+		-o $(MOBILE_BUILD_DIR)/ios/OpenIMCore.xcframework ./open_im_sdk/ ./open_im_sdk_callback/
+	mkdir -p $(FLUTTER_IOS_FRAMEWORK_DIR)
+	rm -rf $(FLUTTER_IOS_FRAMEWORK_DIR)/OpenIMCore.xcframework
+	cp -R $(MOBILE_BUILD_DIR)/ios/OpenIMCore.xcframework $(FLUTTER_IOS_FRAMEWORK_DIR)/
+	@echo "===========> Copied xcframework to $(FLUTTER_IOS_FRAMEWORK_DIR)/OpenIMCore.xcframework"
+
+## flutter: Build iOS and Android SDKs and copy them into the Flutter SDK
+.PHONY: flutter
+flutter: flutter-android flutter-ios
 
 # Targets
 .PHONY: release

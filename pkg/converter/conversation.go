@@ -86,6 +86,12 @@ func MsgDataToLocalChatLog(info *sdkws.MsgData) *model_struct.LocalChatLog {
 		local.Status = constant.MsgStatusSendSuccess
 	}
 
+	if info.ContentType == constant.ReactionMessageModifier {
+		elem := sdk_struct.ReactionElem{}
+		_ = utils.JsonStringToStruct(local.Content, &elem)
+		local.ParentMsgID = elem.ClientMsgID
+	}
+
 	if info.SessionType == constant.WriteGroupChatType || info.SessionType == constant.ReadGroupChatType {
 		local.RecvID = info.GroupID
 	}
@@ -99,6 +105,7 @@ func LocalChatLogToMsgStruct(local *model_struct.LocalChatLog) *sdk_struct.MsgSt
 	msg := &sdk_struct.MsgStruct{
 		ClientMsgID:      local.ClientMsgID,
 		ServerMsgID:      local.ServerMsgID,
+		ParentMsgID:      local.ParentMsgID,
 		CreateTime:       local.CreateTime,
 		SendTime:         local.SendTime,
 		SessionType:      local.SessionType,
@@ -190,6 +197,11 @@ func PopulateMsgStructByContentType(msg *sdk_struct.MsgStruct) (err error) {
 		elem := sdk_struct.MarkdownTextElem{}
 		err = utils.JsonStringToStruct(msg.Content, &elem)
 		msg.MarkdownTextElem = &elem
+	case constant.ReactionMessageModifier:
+		elem := sdk_struct.ReactionElem{}
+		err = utils.JsonStringToStruct(msg.Content, &elem)
+		msg.ReactionElem = &elem
+		msg.ParentMsgID = elem.ClientMsgID
 	default:
 		elem := sdk_struct.NotificationElem{}
 		err = utils.JsonStringToStruct(msg.Content, &elem)
@@ -213,6 +225,7 @@ func MsgStructToLocalChatLog(message *sdk_struct.MsgStruct) *model_struct.LocalC
 	local := &model_struct.LocalChatLog{
 		ClientMsgID:      message.ClientMsgID,
 		ServerMsgID:      message.ServerMsgID,
+		ParentMsgID:      message.ParentMsgID,
 		SendID:           message.SendID,
 		RecvID:           message.RecvID,
 		SenderPlatformID: message.SenderPlatformID,
@@ -260,6 +273,11 @@ func MsgStructToLocalChatLog(message *sdk_struct.MsgStruct) *model_struct.LocalC
 		local.Content = utils.StructToJsonString(message.AdvancedTextElem)
 	case constant.MarkdownText:
 		local.Content = utils.StructToJsonString(message.MarkdownTextElem)
+	case constant.ReactionMessageModifier:
+		local.Content = utils.StructToJsonString(message.ReactionElem)
+		if message.ReactionElem != nil {
+			local.ParentMsgID = message.ReactionElem.ClientMsgID
+		}
 	default:
 		local.Content = utils.StructToJsonString(message.NotificationElem)
 	}

@@ -43,6 +43,7 @@ func (d *DataBase) initChatLog(ctx context.Context, conversationID string) error
             CREATE TABLE "%s" (
                 client_msg_id CHAR(64),
                 server_msg_id CHAR(64),
+                parent_msg_id CHAR(64),
                 send_id CHAR(64),
                 recv_id CHAR(64),
                 sender_platform_id INTEGER,
@@ -78,6 +79,27 @@ func (d *DataBase) initChatLog(ctx context.Context, conversationID string) error
 			return errs.WrapMsg(result.Error, "Create index_send_time failed", "table", tableName, "index", "index_send_time_"+conversationID)
 		}
 		d.tableChecker.UpdateTable(tableName)
+	}
+	if _, ok := d.reactionColumnChecked.Load(tableName); !ok {
+		if err := d.ensureParentMsgIDColumn(conversationID, tableName); err != nil {
+			return err
+		}
+		d.reactionColumnChecked.Store(tableName, struct{}{})
+	}
+	return nil
+}
+
+// ensureParentMsgIDColumn adds the parent_msg_id column used by reaction messages
+// to chat log tables created before it existed.
+func (d *DataBase) ensureParentMsgIDColumn(conversationID, tableName string) error {
+	if !d.conn.Migrator().HasColumn(tableName, "parent_msg_id") {
+		if result := d.conn.Exec(fmt.Sprintf("ALTER TABLE `%s` ADD COLUMN parent_msg_id CHAR(64)", tableName)); result.Error != nil {
+			return errs.WrapMsg(result.Error, "Add parent_msg_id column failed", "table", tableName)
+		}
+	}
+	result := d.conn.Exec(fmt.Sprintf("CREATE INDEX IF NOT EXISTS `%s` ON `%s` (parent_msg_id)", "index_parent_msg_id_"+conversationID, tableName))
+	if result.Error != nil {
+		return errs.WrapMsg(result.Error, "Create index_parent_msg_id failed", "table", tableName, "index", "index_parent_msg_id_"+conversationID)
 	}
 	return nil
 }
@@ -186,6 +208,23 @@ func (d *DataBase) GetMessageList(ctx context.Context, conversationID string, co
 			return nil, err
 		}
 	}
+	return result, err
+}
+
+// GetReactionMessagesByParentMsgIDs returns the reaction messages attached to the given messages, newest first.
+func (d *DataBase) GetReactionMessagesByParentMsgIDs(ctx context.Context, conversationID string, parentMsgIDs []string) (result []*model_struct.LocalChatLog, err error) {
+	if len(parentMsgIDs) == 0 {
+		return nil, nil
+	}
+	if err = d.initChatLog(ctx, conversationID); err != nil {
+		log.ZWarn(ctx, "initChatLog err", err)
+		return nil, err
+	}
+	d.mRWMutex.RLock()
+	defer d.mRWMutex.RUnlock()
+	err = errs.WrapMsg(d.conn.WithContext(ctx).Table(utils.GetTableName(conversationID)).
+		Where("parent_msg_id IN ? AND content_type = ?", parentMsgIDs, constant.ReactionMessageModifier).
+		Order("send_time DESC").Find(&result).Error, "GetReactionMessagesByParentMsgIDs failed")
 	return result, err
 }
 

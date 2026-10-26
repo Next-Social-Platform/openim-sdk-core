@@ -72,6 +72,7 @@ func registerFunc() {
 	js.Global().Set("createLocationMessage", js.FuncOf(wrapperConMsg.CreateLocationMessage))
 	js.Global().Set("createVideoMessageFromFullPath", js.FuncOf(wrapperConMsg.CreateVideoMessageFromFullPath))
 	js.Global().Set("createImageMessageFromFullPath", js.FuncOf(wrapperConMsg.CreateImageMessageFromFullPath))
+	js.Global().Set("createReactionMessage", js.FuncOf(wrapperConMsg.CreateReactionMessage))
 
 	js.Global().Set("createSoundMessageFromFullPath", js.FuncOf(wrapperConMsg.CreateSoundMessageFromFullPath))
 	js.Global().Set("createFileMessageFromFullPath", js.FuncOf(wrapperConMsg.CreateFileMessageFromFullPath))

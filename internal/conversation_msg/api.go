@@ -280,6 +280,12 @@ func (c *Conversation) sendMessage(ctx context.Context, s *sdk_struct.MsgStruct,
 		}
 		return ""
 	}
+	if s.ContentType == constant.ReactionMessageModifier {
+		if s.ReactionElem == nil {
+			return nil, sdkerrs.ErrArgs.WrapMsg("reactionElem is nil")
+		}
+		s.ParentMsgID = s.ReactionElem.ClientMsgID
+	}
 	options := make(map[string]bool, 2)
 	lc, err := c.checkID(ctx, s, recvID, groupID, options)
 	if err != nil {
@@ -521,6 +527,8 @@ func (c *Conversation) sendMessage(ctx context.Context, s *sdk_struct.MsgStruct,
 		s.Content = utils.StructToJsonString(s.FaceElem)
 	case constant.AdvancedText:
 		s.Content = utils.StructToJsonString(s.AdvancedTextElem)
+	case constant.ReactionMessageModifier:
+		s.Content = utils.StructToJsonString(s.ReactionElem)
 	default:
 		return nil, sdkerrs.ErrMsgContentTypeNotSupport
 	}
@@ -540,6 +548,12 @@ func (c *Conversation) sendMessage(ctx context.Context, s *sdk_struct.MsgStruct,
 
 func (c *Conversation) sendMessageNotOss(ctx context.Context, s *sdk_struct.MsgStruct, recvID, groupID string,
 	p *sdkws.OfflinePushInfo, isOnlineOnly bool) (*sdk_struct.MsgStruct, error) {
+	if s.ContentType == constant.ReactionMessageModifier {
+		if s.ReactionElem == nil {
+			return nil, sdkerrs.ErrArgs.WrapMsg("reactionElem is nil")
+		}
+		s.ParentMsgID = s.ReactionElem.ClientMsgID
+	}
 	options := make(map[string]bool, 2)
 	lc, err := c.checkID(ctx, s, recvID, groupID, options)
 	if err != nil {
@@ -608,6 +622,8 @@ func (c *Conversation) sendMessageNotOss(ctx context.Context, s *sdk_struct.MsgS
 		s.Content = utils.StructToJsonString(s.FaceElem)
 	case constant.AdvancedText:
 		s.Content = utils.StructToJsonString(s.AdvancedTextElem)
+	case constant.ReactionMessageModifier:
+		s.Content = utils.StructToJsonString(s.ReactionElem)
 	default:
 		return nil, sdkerrs.ErrMsgContentTypeNotSupport
 	}

@@ -705,3 +705,8 @@ func (i *LocalChatLogs) DeleteConversationMsgsBySeqs(ctx context.Context, conver
 	_, err := exec.Exec(conversationID, utils.StructToJsonString(seqs))
 	return err
 }
+
+// GetReactionMessagesByParentMsgIDs is not supported by the IndexedDB storage yet; reactions are only aggregated on native platforms.
+func (i *LocalChatLogs) GetReactionMessagesByParentMsgIDs(ctx context.Context, conversationID string, parentMsgIDs []string) (result []*model_struct.LocalChatLog, err error) {
+	return nil, nil
+}

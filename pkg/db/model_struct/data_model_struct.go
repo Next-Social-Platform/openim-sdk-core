@@ -172,6 +172,7 @@ type LocalSeq struct {
 type LocalChatLog struct {
 	ClientMsgID      string `gorm:"column:client_msg_id;primary_key;type:char(64)" json:"clientMsgID"`
 	ServerMsgID      string `gorm:"column:server_msg_id;type:char(64)" json:"serverMsgID"`
+	ParentMsgID      string `gorm:"column:parent_msg_id;type:char(64)" json:"parentMsgID"`
 	SendID           string `gorm:"column:send_id;type:char(64)" json:"sendID"`
 	RecvID           string `gorm:"column:recv_id;index:index_recv_id;type:char(64)" json:"recvID"`
 	SenderPlatformID int32  `gorm:"column:sender_platform_id" json:"senderPlatformID"`

@@ -74,6 +74,8 @@ type DataBase struct {
 	conn         *gorm.DB
 	tableChecker *TableChecker
 	mRWMutex     sync.RWMutex
+	// tables already checked for the parent_msg_id column
+	reactionColumnChecked sync.Map
 }
 
 func (d *DataBase) InitDB(ctx context.Context, userID string, dataDir string) error {

@@ -103,6 +103,10 @@ func (w *WrapperConMsg) CreateVideoMessageFromFullPath(_ js.Value, args []js.Val
 func (w *WrapperConMsg) CreateImageMessageFromFullPath(_ js.Value, args []js.Value) interface{} {
 	return event_listener.NewCaller(open_im_sdk.CreateImageMessageFromFullPath, nil, &args).AsyncCallWithOutCallback()
 }
+
+func (w *WrapperConMsg) CreateReactionMessage(_ js.Value, args []js.Value) interface{} {
+	return event_listener.NewCaller(open_im_sdk.CreateReactionMessage, nil, &args).AsyncCallWithOutCallback()
+}
 func (w *WrapperConMsg) CreateSoundMessageFromFullPath(_ js.Value, args []js.Value) interface{} {
 	return event_listener.NewCaller(open_im_sdk.CreateSoundMessageFromFullPath, nil, &args).AsyncCallWithOutCallback()
 }

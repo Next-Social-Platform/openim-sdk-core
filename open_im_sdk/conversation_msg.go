@@ -87,6 +87,11 @@ func CreateVideoMessageFromFullPath(operationID string, videoFullPath string, vi
 func CreateImageMessageFromFullPath(operationID string, imageFullPath string) string {
 	return syncCall(operationID, IMUserContext.Conversation().CreateImageMessageFromFullPath, imageFullPath)
 }
+
+// CreateReactionMessage creates a reaction (status 1 = active, 0 = removed) to the message with clientMsgID.
+func CreateReactionMessage(operationID string, clientMsgID string, reaction string, status int32) string {
+	return syncCall(operationID, IMUserContext.Conversation().CreateReactMessage, clientMsgID, reaction, status)
+}
 func CreateSoundMessageFromFullPath(operationID string, soundPath string, duration int64) string {
 	return syncCall(operationID, IMUserContext.Conversation().CreateSoundMessageFromFullPath, soundPath, duration)
 }
